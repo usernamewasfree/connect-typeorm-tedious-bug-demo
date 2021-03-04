@@ -1,0 +1,32 @@
+version: '3'
+services:
+  db:
+    env_file: .env
+    image: microsoft/mssql-server-linux:2017-GDR
+    ports:
+      - 1433:1433
+    healthcheck:
+      test: '/opt/mssql-tools/bin/sqlcmd
+        -S `hostname --ip-address`
+        -U sa
+        -P $SA_PASSWORD
+        -Q "select 1"
+      '
+  database-init:
+    build: .
+    command: 'bash -c "
+      envsubst < /db-init.sql |
+      /opt/mssql-tools/bin/sqlcmd
+      -S db
+      -U sa
+      -P $SA_PASSWORD
+    "'
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    image: microsoft/mssql-tools-restore
+    volumes:
+      - ./db-init.sql:/db-init.sql:ro
+volumes:
+  db:
